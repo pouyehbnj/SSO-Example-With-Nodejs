@@ -21,7 +21,8 @@ var cfenv = require('cfenv');
 
 // create a new express server
 var app = express();
-
+const KeyCloakService = require('./lib/keyCloakService');
+let keyCloak = new KeyCloakService(PERMISSIONS);
 // serve the files out of ./public as our main files
 app.use(express.static(__dirname + '/public'));
 
@@ -30,243 +31,257 @@ app.use(express.static(__dirname + '/public'));
 app.use(bodyParser.json());
 
 app.post("/ldap", (req, res) => {
-	var result = "";    // To send back to the client
-	
-	var client = ldap.createClient({
-  		url: req.body.serverUrl
-	});
-	
-	client.bind(req.body.readerDN, req.body.readerPwd, function(err) {
-		if (err) {
-			result += "Reader bind failed " + err;
-			res.send(result);
-			return;
-		}
-		
-		result += "Reader bind succeeded\n";
-		
-		var filter = `(uid=${req.body.username})`;
-		
-		result += `LDAP filter: ${filter}\n`;
-		
-		client.search(req.body.suffix, {filter:filter, scope:"sub"},
-			(err, searchRes) => {
-				var searchList = [];
-				
-				if (err) {
-					result += "Search failed " + err;
-					res.send(result);
-					return;
-				}
-				
-				searchRes.on("searchEntry", (entry) => {
-					result += "Found entry: " + entry + "\n";
-					searchList.push(entry);
-				});
+    var result = "";    // To send back to the client
 
-				searchRes.on("error", (err) => {
-					result += "Search failed with " + err;
-					res.send(result);
-				});
-				
-				searchRes.on("end", (retVal) => {
-					result += "Search results length: " + searchList.length + "\n";
-					for(var i=0; i<searchList.length; i++) 
-						result += "DN:" + searchList[i].objectName + "\n";
-					result += "Search retval:" + retVal + "\n";					
-					
-					if (searchList.length === 1) {					
-						client.bind(searchList[0].objectName, req.body.password, function(err) {
-							if (err) 
-								result += "Bind with real credential error: " + err;
-							else
-								result += "Bind with real credential is a success";
-								
-							res.send(result);	
-						});  // client.bind (real credential)
-						
-						
-					} else { // if (searchList.length === 1)
-						result += "No unique user to bind";
-						res.send(result);
-					}
+    var client = ldap.createClient({
+        url: req.body.serverUrl
+    });
 
-				});   // searchRes.on("end",...)
-				
-		});   // client.search
-		
-	}); // client.bind  (reader account)
-	
+    client.bind(req.body.readerDN, req.body.readerPwd, function (err) {
+        if (err) {
+            result += "Reader bind failed " + err;
+            res.send(result);
+            return;
+        }
+
+        result += "Reader bind succeeded\n";
+        console.log(result)
+        var filter = `(uid=${req.body.username})`;
+        var base = 'cn=Bill Gates,ou=users,dc=mycompany,dc=com';
+        result += `LDAP filter: ${filter}\n`;
+        console.log(result)
+        client.search(base, { filter: filter, scope: "sub" },
+            (err, searchRes) => {
+                var searchList = [];
+
+                if (err) {
+                    result += "Search failed " + err;
+                    res.send(result);
+                    return;
+                }
+
+                searchRes.on("searchEntry", (entry) => {
+                    result += "Found entry: " + entry + "\n";
+                    searchList.push(entry);
+                });
+
+                searchRes.on("error", (err) => {
+                    result += "Search failed with " + err;
+                    res.send(result);
+                });
+
+                searchRes.on("end", (retVal) => {
+                    result += "Search results length: " + searchList.length + "\n";
+                    for (var i = 0; i < searchList.length; i++)
+                        result += "DN:" + searchList[i].objectName + "\n";
+                    result += "Search retval:" + retVal + "\n";
+
+                    if (searchList.length === 1) {
+                        client.bind(searchList[0].objectName, req.body.password, function (err) {
+                            if (err)
+                                result += "Bind with real credential error: " + err;
+                            else
+                                result += "Bind with real credential is a success";
+
+                            res.send(result);
+                        });  // client.bind (real credential)
+
+
+                    } else { // if (searchList.length === 1)
+                        result += "No unique user to bind";
+                        res.send(result);
+                    }
+
+                });   // searchRes.on("end",...)
+
+            });   // client.search
+
+    }); // client.bind  (reader account)
+
 }); // app.post("/ldap"...)
 
+app.get('/login', (req, res) => {
+    console.log(req.query.login)
+    keyCloak.loginUser(req.query.login, req.query.password, req, res).then(grant => {
+        console.log('styhhhhhhhh')
+        // console.log(grant.__raw);
+        res.render('loginSuccess', {
+            userLogin: req.query.login
+        });
+    }).catch(error => {
+        // TODO put login failed code here (we can return 401 code)
+        console.log('heeeeeeeeeeeeeeeeeere')
+        console.error(error);
+        res.end('Login error: ' + error);
+    });
+})
+
+
+
+// app.post("/ad", (req, res) => {
+// 	var client = ldap.createClient({
+//   		url: req.body.serverUrl
+// 	});
+
+// 	client.bind(req.body.username + '@' + req.body.domain, req.body.password, function(err) {
+// 		if (err) {
+// 			res.send("Bind failed " + err);
+// 			return;
+// 		}
+
+// 		res.send("Log on successful");		
+
+// 	}); // client.bind
+
+// }); // app.post("/ad...")
+
+
+
+// app.post("/ldapGrp", (req, res) => {
+// 	var result = "";    // To send back to the client
+
+// 	var client = ldap.createClient({
+//   		url: req.body.serverUrl
+// 	});
+
+// 	client.bind(req.body.readerDN, req.body.readerPwd, function(err) {
+// 		if (err) {
+// 			result += "Reader bind failed " + err;
+// 			res.send(result);
+// 			return;
+// 		}
+
+// 		result += "Reader bind succeeded\n";
+
+// 		var filter = `(uid=${req.body.username})`;
+
+// 		result += `LDAP filter: ${filter}\n`;
+
+// 		client.search(req.body.suffix, {filter:filter, scope:"sub"},
+// 			(err, searchRes) => {
+// 				var searchList = [];
+
+// 				if (err) {
+// 					result += "Search failed " + err;
+// 					res.send(result);
+// 					return;
+// 				}
+
+// 				searchRes.on("searchEntry", (entry) => {
+// 					result += "Found entry: " + entry + "\n";
+// 					searchList.push(entry);
+// 				});
+
+// 				searchRes.on("error", (err) => {
+// 					result += "Search failed with " + err;
+// 					res.send(result);
+// 				});
+
+// 				searchRes.on("end", (retVal) => {
+// 					result += "Search results length: " + searchList.length + "\n";
+// 					for(var i=0; i<searchList.length; i++) 
+// 						result += "DN:" + searchList[i].objectName + "\n";
+// 					result += "Search retval:" + retVal + "\n";					
+
+// 					if (searchList.length === 1) {
+// 						// Get a list of groups, try to bind after you get it
+// 						var groupList = [];
+
+// 						client.search(req.body.suffix, {filter:`(member=${searchList[0].objectName})`, scope:"sub"},
+// 							(err, searchRes) => {
+
+// 							if (err) {
+// 								result += "Group search failed " + err;
+// 								res.send(result);
+// 								return;
+// 							}
+
+// 							searchRes.on("searchEntry", (entry) => {
+// 								result += "Group search found entry: " + entry.objectName + "\n";
+// 								searchList.push(entry);
+// 							});
+
+// 							searchRes.on("error", (err) => {
+// 								result += "Group search failed with " + err;
+// 								res.send(result);
+// 							});
+
+// 							searchRes.on("end", (retVal) => {
+// 								result += "Group search done: " + retVal;
+
+
+// 								client.bind(searchList[0].objectName, req.body.password, function(err) {
+// 									if (err) 
+// 										result += "Bind with real credential error: " + err;
+// 									else
+// 										result += "Bind with real credential is a success";
+
+// 									res.send(result);	
+// 								});  // client.bind (real credential)
+
+// 							});    // searchRes.on("end"...)
+
+// 						});
+
+
+// 					} else { // if (searchList.length === 1)
+// 						result += "No unique user to bind";
+// 						res.send(result);
+// 					}
+
+// 				});   // searchRes.on("end",...)
+
+// 		});   // client.search
+
+// 	}); // client.bind  (reader account)
+
+// }); // app.post("/ldapGrp")
 
 
 
 
-app.post("/ad", (req, res) => {
-	var client = ldap.createClient({
-  		url: req.body.serverUrl
-	});
-	
-	client.bind(req.body.username + '@' + req.body.domain, req.body.password, function(err) {
-		if (err) {
-			res.send("Bind failed " + err);
-			return;
-		}
-		
-		res.send("Log on successful");		
-
-	}); // client.bind
-	
-}); // app.post("/ad...")
 
 
+// app.post("/adGrp", (req, res) => {
+// 	var client = ldap.createClient({
+//   		url: req.body.serverUrl
+// 	});
 
-app.post("/ldapGrp", (req, res) => {
-	var result = "";    // To send back to the client
-	
-	var client = ldap.createClient({
-  		url: req.body.serverUrl
-	});
-	
-	client.bind(req.body.readerDN, req.body.readerPwd, function(err) {
-		if (err) {
-			result += "Reader bind failed " + err;
-			res.send(result);
-			return;
-		}
-		
-		result += "Reader bind succeeded\n";
-		
-		var filter = `(uid=${req.body.username})`;
-		
-		result += `LDAP filter: ${filter}\n`;
-		
-		client.search(req.body.suffix, {filter:filter, scope:"sub"},
-			(err, searchRes) => {
-				var searchList = [];
-				
-				if (err) {
-					result += "Search failed " + err;
-					res.send(result);
-					return;
-				}
-				
-				searchRes.on("searchEntry", (entry) => {
-					result += "Found entry: " + entry + "\n";
-					searchList.push(entry);
-				});
+// 	var userPrincipalName = req.body.username + '@' + req.body.domain;
 
-				searchRes.on("error", (err) => {
-					result += "Search failed with " + err;
-					res.send(result);
-				});
-				
-				searchRes.on("end", (retVal) => {
-					result += "Search results length: " + searchList.length + "\n";
-					for(var i=0; i<searchList.length; i++) 
-						result += "DN:" + searchList[i].objectName + "\n";
-					result += "Search retval:" + retVal + "\n";					
-					
-					if (searchList.length === 1) {
-						// Get a list of groups, try to bind after you get it
-						var groupList = [];
-						
-						client.search(req.body.suffix, {filter:`(member=${searchList[0].objectName})`, scope:"sub"},
-							(err, searchRes) => {
-								
-							if (err) {
-								result += "Group search failed " + err;
-								res.send(result);
-								return;
-							}
-				
-							searchRes.on("searchEntry", (entry) => {
-								result += "Group search found entry: " + entry.objectName + "\n";
-								searchList.push(entry);
-							});
+// 	client.bind(userPrincipalName, req.body.password, function(err) {
+// 		if (err) {
+// 			res.send("Bind failed " + err);
+// 			return;
+// 		}
 
-							searchRes.on("error", (err) => {
-								result += "Group search failed with " + err;
-								res.send(result);
-							});
-				
-							searchRes.on("end", (retVal) => {
-								result += "Group search done: " + retVal;
-								
-						
-								client.bind(searchList[0].objectName, req.body.password, function(err) {
-									if (err) 
-										result += "Bind with real credential error: " + err;
-									else
-										result += "Bind with real credential is a success";
-								
-									res.send(result);	
-								});  // client.bind (real credential)
+// 		client.search(req.body.suffix, {filter:`(userPrincipalName=${userPrincipalName})`, scope:"sub"},
+// 			(err, searchRes) => {
+// 				var groups = [];
 
-							});    // searchRes.on("end"...)
-								
-						});
-												
-						
-					} else { // if (searchList.length === 1)
-						result += "No unique user to bind";
-						res.send(result);
-					}
+// 				if (err) {		
+// 					res.send("Bind successful, search failed");
+// 					return;
+// 				}
 
-				});   // searchRes.on("end",...)
-				
-		});   // client.search
-		
-	}); // client.bind  (reader account)
-	
-}); // app.post("/ldapGrp")
+// 				searchRes.on("searchEntry", (entry) => {	
+// 					var lst = entry.attributes.filter((x) => x.type === "memberOf");
+// 					if (lst.length)
+// 						groups = lst[0].vals;						
+// 				});
 
+// 				searchRes.on("error", (err) => {
+// 					res.send("Bind successful, search got error:" + err);
+// 				});
 
+// 				searchRes.on("end", (retVal) => {
+// 					res.send("Bind and search successful (search retVal:" + retVal + "). Groups:" + groups);
+// 				});
+// 		});  // client.search
 
+// 	}); // client.bind
 
-
-
-app.post("/adGrp", (req, res) => {
-	var client = ldap.createClient({
-  		url: req.body.serverUrl
-	});
-	
-	var userPrincipalName = req.body.username + '@' + req.body.domain;
-	
-	client.bind(userPrincipalName, req.body.password, function(err) {
-		if (err) {
-			res.send("Bind failed " + err);
-			return;
-		}
-		
-		client.search(req.body.suffix, {filter:`(userPrincipalName=${userPrincipalName})`, scope:"sub"},
-			(err, searchRes) => {
-				var groups = [];
-								
-				if (err) {		
-					res.send("Bind successful, search failed");
-					return;
-				}
-				
-				searchRes.on("searchEntry", (entry) => {	
-					var lst = entry.attributes.filter((x) => x.type === "memberOf");
-					if (lst.length)
-						groups = lst[0].vals;						
-				});
-
-				searchRes.on("error", (err) => {
-					res.send("Bind successful, search got error:" + err);
-				});
-				
-				searchRes.on("end", (retVal) => {
-					res.send("Bind and search successful (search retVal:" + retVal + "). Groups:" + groups);
-				});
-		});  // client.search
-
-	}); // client.bind
-	
-}); // app.post("/adGrp...")
+// }); // app.post("/adGrp...")
 
 
 
@@ -275,7 +290,7 @@ app.post("/adGrp", (req, res) => {
 var appEnv = cfenv.getAppEnv();
 
 // start server on the specified port and binding host
-app.listen(appEnv.port, '0.0.0.0', function() {
-  // print a message when the server starts listening
-  console.log("server starting on " + appEnv.url);
+app.listen(appEnv.port, '0.0.0.0', function () {
+    // print a message when the server starts listening
+    console.log("server starting on " + appEnv.url);
 });
