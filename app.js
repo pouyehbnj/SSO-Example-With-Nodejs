@@ -6,6 +6,7 @@
 
 // This application uses express as its web server
 // for more info, see: http://expressjs.com
+
 var express = require('express');
 
 // Parse the application/json requests we get from the client
@@ -14,17 +15,27 @@ var bodyParser = require('body-parser');
 
 // LDAP library, documented at http://ldapjs.org/client.html
 var ldap = require('ldapjs');
-
+const hogan = require('hogan-express');
 // cfenv provides access to your Cloud Foundry environment
 // for more info, see: https://www.npmjs.com/package/cfenv
 var cfenv = require('cfenv');
 
 // create a new express server
 var app = express();
+app.set('view engine', 'html');
+app.engine('html', hogan);
+const AdminClient = require('./lib/adminClient');
 const KeyCloakService = require('./lib/keyCloakService');
+let adminClient = new AdminClient({
+    realm: 'company-services',
+    serverUrl: 'http://193.176.243.52:8080',
+    resource: 'company-services',
+    adminLogin: 'admin',
+    adminPassword: 'admin'
+});
 const Permissions = require('./lib/permissions');
 const PERMISSIONS = new Permissions([]).notProtect('/login(*)')
-let keyCloak = new KeyCloakService(PERMISSIONS);
+let keyCloak = new KeyCloakService(PERMISSIONS,adminClient);
 // serve the files out of ./public as our main files
 app.use(express.static(__dirname + '/public'));
 
