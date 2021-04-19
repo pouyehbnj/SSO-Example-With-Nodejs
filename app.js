@@ -22,6 +22,8 @@ var cfenv = require('cfenv');
 // create a new express server
 var app = express();
 const KeyCloakService = require('./lib/keyCloakService');
+const Permissions = require('./lib/permissions');
+const PERMISSIONS = new Permissions([]).notProtect('/login(*)')
 let keyCloak = new KeyCloakService(PERMISSIONS);
 // serve the files out of ./public as our main files
 app.use(express.static(__dirname + '/public'));
@@ -101,16 +103,19 @@ app.post("/ldap", (req, res) => {
 }); // app.post("/ldap"...)
 
 app.get('/login', (req, res) => {
+    console.log('user:')
     console.log(req.query.login)
+    console.log('pass:')
+    console.log(req.query.password)
     keyCloak.loginUser(req.query.login, req.query.password, req, res).then(grant => {
-        console.log('styhhhhhhhh')
+        
         // console.log(grant.__raw);
         res.render('loginSuccess', {
             userLogin: req.query.login
         });
     }).catch(error => {
         // TODO put login failed code here (we can return 401 code)
-        console.log('heeeeeeeeeeeeeeeeeere')
+        console.log('error:')
         console.error(error);
         res.end('Login error: ' + error);
     });

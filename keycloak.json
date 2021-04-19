@@ -1,0 +1,13 @@
+{
+  "realm": "company-services",
+  "auth-server-url": "http://193.176.243.52:8080/auth/",
+  "ssl-required": "external",
+  "resource": "company-services",
+  "realm-public-key":"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3k/DiDDJt88fT3mzTgQullCzrBe4e5LUlaYP6KmorMRJuQUxvpqndEPj6mroTDNo260Xg9A4YEwLzPZel0brTtrz+QLsS21SldFdz+5qX9LAx5CMWgNk4nH3uI9JbMakvnDeqmV6E9vt7+xa3XaMRwvCx+g3QckRdup16RRo4xU8HX48jgvHWiiJa8xkUXiSmcR7GRbSDfMiW26hFU7tL0vc8Q4ZGANGlySzQsqV3c4zKIqRcKpYbbkZSfId8nmb+TsQt4nkM6rvy4gg9X2AvOABV5/bO9ajvsKTv2QPu2it1/Ln7r/67r90QvWmfF0qhxHX3G2PPhw34VPPQeliDQIDAQAB",
+  "verify-token-audience": true,
+  "credentials": {
+    "secret": "9e4d7d16-f741-4c4c-bb0f-00aa33e70f0d"
+  },
+  "confidential-port": 0,
+  "policy-enforcer": {}
+}
